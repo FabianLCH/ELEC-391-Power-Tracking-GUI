@@ -2,11 +2,20 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter.messagebox import showerror
 
+import matplotlib
+matplotlib.use("TkAgg")
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.figure import Figure
+import matplotlib.animation as animation
+from matplotlib import style
+
 import serial
 import serial.tools.list_ports
 
+
 # define the USB serial port that is normally used by PuTTy 
 BAUDRATE = 115200
+BACKGROUND = '#F4F4F4'
 
 class Window(Frame):
     def __init__(self, master = None):
@@ -51,7 +60,7 @@ def wait_serial():
     retryButton.grid_forget() #remove the retry button
 
     #create and place a label showing the success message
-    Label(root, text = successMsg.format(port = portList[0][0]), font = ("Helvetica", 10)).grid(row = 5, column = 0, sticky = N+S+E+W, columnspan = 2)
+    Label(root, text = successMsg.format(port = portList[0][0]), font = ("Helvetica", 10)).grid(row = 5, column = 0, sticky = N+S+E+W, columnspan = 3)
 
 """
 Use the methods in the pyserial library to check for a valid
@@ -71,6 +80,11 @@ def check_serial():
     except:
         pass
 
+"""
+Read the data coming in through the serial port and split it into
+a list. The data is converted from its respective format to a 
+useable string.
+"""
 def read_serial():
     serialOut = serialPort.readline() # read the next line of the serial port
     data = str(serialOut[:-2], "utf-8") # decode the input data received
@@ -79,8 +93,9 @@ def read_serial():
 
     return serialData
 
+
 root = Tk() # define the root 
-#root.geometry("1000x500") # set the default size of the root
+root.tk_setPalette(background = BACKGROUND)
 
 initialWindow = Window(root) # define the main window
 
@@ -90,7 +105,6 @@ for i in range(6):
 
 initialWindow.grid_columnconfigure(0, weight = 1)
 initialWindow.grid_columnconfigure(1, weight = 1)
-
 
 successMsg = "Connected to port {port}"
 errorMsg = "Could not connect to serial port. Make sure your device is connected and try again." 
@@ -109,7 +123,7 @@ try:
     serialPort = serial.Serial(portList[0][0], BAUDRATE, timeout = 100) # connect to the first available COM port
 
     #create and place a label showing the success message
-    Label(root, text = successMsg.format(port = portList[0][0]), font = ("Helvetica", 10)).grid(row = 5, column = 0, sticky = N+S+E+W, columnspan = 2)
+    Label(root, text = successMsg.format(port = portList[0][0]), font = ("Helvetica", 10)).grid(row = 5, column = 0, sticky = N+S+E+W, columnspan = 5)
 except:
     # create and place a label for the error message
     errorLabel = Label(root, text = errorMsg, anchor = CENTER)
@@ -121,19 +135,19 @@ except:
 
 #create and place labels for the values read
 inVolts = StringVar()
-Label(root, textvariable = inVolts, bg = "white", font = ("Arial", 16)).grid(row = 0, column = 1, sticky = N+S+E+W, pady = 2)
+Label(root, textvariable = inVolts, bg = "white", font = ("Arial", 16)).grid(row = 0, column = 1, sticky = E+W, pady = 2)
 
 inCurrent = StringVar()
-Label(root, textvariable = inCurrent, bg = "white", font = ("Arial", 16)).grid(row = 1, column = 1, sticky = N+S+E+W, pady = 2)
-
-outVolts = StringVar()
-Label(root, textvariable = outVolts, bg = "white", font = ("Arial", 16)).grid(row = 2, column = 1, sticky = N+S+E+W, pady = 2)
+Label(root, textvariable = inCurrent, bg = "white", font = ("Arial", 16)).grid(row = 1, column = 1, sticky = E+W, pady = 2)
 
 inPower = StringVar()
-Label(root, textvariable = inPower, bg = "white", font = ("Arial", 16)).grid(row = 3, column = 1, sticky = N+S+E+W, pady = 2)
+Label(root, textvariable = inPower, bg = "white", font = ("Arial", 16)).grid(row = 2, column = 1, sticky = E+W, pady = 2)
+
+outVolts = StringVar()
+Label(root, textvariable = outVolts, bg = "white", font = ("Arial", 16)).grid(row = 3, column = 1, sticky = E+W, pady = 2)
 
 inAngle = StringVar()
-Label(root, textvariable = inAngle, bg = "white", font = ("Arial", 16)).grid(row = 4, column = 1, sticky = N+S+E+W, pady = 2)
+Label(root, textvariable = inAngle, bg = "white", font = ("Arial", 16)).grid(row = 4, column = 1, sticky = E+W, pady = 2)
 
 # create and place labels for each reading
 Label(root, text = "Input Voltage (V):", font = ("Helvetica", 16), anchor = W).grid(row = 0, column = 0, sticky = N+S+E+W, pady = 2, padx = 3)
@@ -141,6 +155,19 @@ Label(root, text = "Input Current (A):", font = ("Helvetica", 16), anchor = W).g
 Label(root, text =  "Input Power(W):", font = ("Helvetica", 16), anchor = W).grid(row = 2, column = 0, sticky = N+S+E+W, pady = 2, padx = 3)
 Label(root, text = "Output Voltage(V):", font = ("Helvetica", 16), anchor = W).grid(row = 3, column = 0, sticky = N+S+E+W, pady = 2, padx = 3)
 Label(root, text =  "Angle:", font = ("Helvetica", 16)).grid(row = 4, column = 0, sticky = N+S+E+W, pady = 2, padx = 3)
+
+# draw the graphs in the GUI
+vpfig = Figure(figsize=(5,4), dpi=100)
+vpfig.patch.set_facecolor(BACKGROUND)
+
+voltpower = vpfig.add_subplot(111)
+voltpower.set_ylabel("Power (W)")
+voltpower.set_xlabel("Voltage (V)")
+voltpower.plot([1,2,3],[4,5,6])
+
+canvas = FigureCanvasTkAgg(vpfig, master = root)
+canvas.draw()
+canvas.get_tk_widget().grid(row = 0, column = 3, rowspan = 5, padx = 15)
 
 while 1: # main program loop
          
@@ -150,8 +177,8 @@ while 1: # main program loop
         # set the text variable data
         inVolts.set(sensorData[0])
         inCurrent.set(sensorData[1])
-        outVolts.set(sensorData[2])
-        inPower.set(sensorData[3])
+        inPower.set(sensorData[2])
+        outVolts.set(sensorData[3])
         inAngle.set(sensorData[4])
     except:
         messagebox.showerror(title = "Connection Error", message = "Lost connection to serial port.") 
