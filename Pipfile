@@ -9,6 +9,7 @@ pylint = "*"
 [packages]
 matplotlib = "*"
 pyserial = "*"
+scipy = "*"
 
 [requires]
 python_version = "3.7"
